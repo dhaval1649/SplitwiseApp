@@ -1,0 +1,69 @@
+
+<div class="container-fluid">
+  <section class="container">
+    <div class="container-page">
+      <form (ngSubmit)="onRegistration()" [formGroup]="regform" #formDir="ngForm" novalidate>
+        <div class="col-md-5">
+          <h3 class="dark-grey">Registration</h3>
+
+          <div class="form-group col-lg-12">
+            <label>Name</label>
+            <input type="text" name="" class="form-control" id="name" value="" formControlName="name">
+            <span class="text-danger" *ngIf="name.invalid && formDir.submitted">
+              Name is required.
+            </span>
+          </div>
+
+          <div class="form-group col-lg-12">
+            <label>Email</label>
+            <input type="text" name="" class="form-control" id="email" value="" formControlName="email">
+            <span class="text-danger" *ngIf="email.invalid && formDir.submitted">
+              Email is required.
+            </span>
+          </div>
+
+          <div class="form-group col-lg-12">
+            <label>Password</label>
+            <input type="password" name="" class="form-control" id="password" value="" formControlName="password">
+            <span class="text-danger" *ngIf="password.invalid && formDir.submitted">
+              Password is required.
+            </span>
+          </div>
+          <div class="form-group col-lg-12">
+            <button type="submit" class="btn btn-primary" >Register</button><br />
+            <span class="text-success" *ngIf="isRegistered">You are registered successfully Please login to continue</span>
+          </div>
+        </div>
+      </form>
+      <form (ngSubmit)="onLogin()"  [formGroup]="loginform" #formDir1="ngForm" novalidate>
+        <div class="col-md-5">
+          <h3 class="dark-grey">Login</h3>
+
+
+          <div class="form-group col-lg-12">
+            <label>Email</label>
+            <input type="text" name="" class="form-control" id="email1" value="" formControlName="email1">
+            <span class="text-danger" *ngIf="email1.invalid && formDir1.submitted">
+              Email is required.
+            </span>
+          </div>
+
+          <div class="form-group col-lg-12">
+            <label>Password</label>
+            <input type="password" name="" class="form-control" id="password1" value="" formControlName="password1">
+            <span class="text-danger" *ngIf="password1.invalid && formDir1.submitted">
+              Password is required.
+            </span>
+          </div>
+          <div class="form-group col-lg-12">
+            <button type="submit" class="btn btn-primary">Login</button>
+            <span class="text-danger" *ngIf="loginError && formDir1.submitted">
+              Login Credentials donot match
+            </span>
+          </div>
+        </div>
+        </form>
+      <div class="col-md-2"></div>
+    </div>
+  </section>
+</div>

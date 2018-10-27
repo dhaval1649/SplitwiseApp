@@ -1,0 +1,404 @@
+
+<style>
+  .h4, h4 { margin-top: 0px; margin-bottom: 0px; }
+  .h3, h3 { margin-top: 0px; }
+</style>
+<div class="row">
+  <div class="col-sm-8">
+    <div class="topbar group ">
+      <div style="border-bottom:1px solid #ddd">
+        <h1> <span class='glyphicon glyphicon-user' style="font-size:25px;" *ngIf="isUserDetail"></span>{{title}}</h1>
+        <div class="actions">
+          <button type="submit" (click)="addBill()" class="btn btn-warning" *ngIf="isDefaultList">Add a bill</button>
+          <button type="submit" (click)="showConfirm()" class="btn btn-success" *ngIf="isDefaultList">Settle up</button>
+        </div>
+      </div>
+
+      <div class="row  text-center" *ngIf="isDefaultList && !isNonGroupExpenses">
+        <br />
+        <div class="col-sm-4" style="border-right:1px solid #ddd">
+          total balance<br />
+          <h4 class="text-success"> {{totalBalance||0|currency}}</h4>
+        </div>
+        <div class="col-sm-4" style="border-right:1px solid #ddd">
+          you owe
+          <h4 class="text-danger">{{youOwe||0|abs|currency}}</h4>
+        </div>
+        <div class="col-sm-4">
+          you are owed
+          <h4 class="text-success"> {{youGetback||0|currency}}</h4>
+        </div>
+      </div>
+    </div>
+    <div *ngIf="isAddBill">
+      <div class="modal-header">
+        <h4 class="modal-title" id="modal-basic-title">Add a Bill</h4><small *ngIf="splitTabActive!='2' && splitTabActive!='3' && splitTabActive!='4'">({{(splitAmount||0)|currency}}/person)</small>
+        <small *ngIf="splitTabActive=='2' || splitTabActive=='3' || splitTabActive=='4'">(You {{(owe||'')}} {{(finalAmount||0)|currency}})</small>
+      </div>
+      <div class="modal-body">
+        <form (ngSubmit)="onSubmit()" #formDir="ngForm" novalidate>
+          <div class="form-group row">
+            <label class="col-sm-3" for="category"> With you and</label>
+            <div class="input-group col-sm-9">
+              <ng-multiselect-dropdown name="drpMembers" [data]="dropdownList1"
+                                       [(ngModel)]="selectedItems"
+                                       [settings]="dropdownSettings"
+                                       (onSelect)="onItemSelect($event)"
+                                       (onSelectAll)="onSelectAll($event)"
+                                       (onDeSelect)="OnItemDeSelect($event)"
+                                       (onDeSelectAll)="onDeSelectAll($event)">
+              </ng-multiselect-dropdown>
+            </div>
+          </div>
+          <div class="form-group row">
+            <label class="col-sm-4" for="category">Choose Category</label>
+            <div class="col-sm-4">
+              <select class="form-control" name="category" required [ngModel]="selectedCategory" (ngModelChange)="onCategorySelected($event)">
+                <option value="0">Select Category</option>
+                <option *ngFor='let option of category' [value]="option.category1Id">{{option.title}}</option>
+              </select>
+
+            </div>
+          </div>
+          <div class="form-group row" *ngIf="isSubCategory">
+            <label for="subCategory" class="col-sm-4">Choose Sub Category</label>
+            <div class="col-sm-4">
+              <select class="form-control" name="subCategory" required [(ngModel)]='selectedSubCategory'>
+                <option value="">Select Sub Category</option>
+                <option *ngFor='let option of subCategory' [value]="option.category2Id">{{option.title}}</option>
+              </select>
+
+            </div>
+          </div>
+          <div class="form-group row">
+            <label for="description" class="col-sm-4">Descriprion</label>
+            <div class="col-sm-8">
+              <textarea rows="3" id="description" class="form-control" name="description" [(ngModel)]='description'></textarea>
+            </div>
+          </div>
+          <div class="form-group row">
+            <label for="amount" class="col-sm-4">Amount</label>
+            <div class="input-group col-sm-4">
+              <span class="input-group-addon"><i class="glyphicon glyphicon-usd"></i></span>
+              <input id="amount" type="text" class="form-control" name="amount" placeholder="0.00" (input)="onAmountChange()" [(ngModel)]="amount">
+            </div>
+          </div>
+          <div class="form-group row">
+            <label for="amount" class="col-sm-4">Paid by</label>
+            <div class="col-sm-3">
+              <select class="form-control" name="paidby" required [(ngModel)]='selectedPayedBy' (ngModelChange)='onPaidBySelected($event)'>
+                <option value="">Choose payer</option>
+                <option *ngFor='let option of paidBy' [value]="option.userId">{{option.name}}</option>
+              </select>
+            </div>
+            <label class="col-sm-4">and split&nbsp;<a class="label label-warning" (click)="onSplitChange()">{{splitby}}</a></label>
+          </div>
+
+          <div class="form-group" *ngIf="isMultipleUsers">
+            <label class="col-sm-4"></label>
+            <div class="col-sm-8">
+              <input type="checkbox" name="multiUserChecked" [ngModel]="isMultiUserChecked" (ngModelChange)="onMultiUserCheckChange($event)" /> Each person paid for their own share
+              <hr />
+              <ul class="list-group">
+                <li *ngFor="let user of groupMembers; let i = index" class="list-group-item">
+                  <div class="row">
+                    <div class="col-sm-8">
+                      <span class='glyphicon glyphicon-user'></span> {{user.name}}
+                    </div>
+                    <div class="input-group col-sm-4">
+                      <span class="input-group-addon"><i class="glyphicon glyphicon-usd"></i></span>
+                      <input [disabled]="isMultiUserChecked" type="text" class="form-control" name="multiUserAmt-{{i}}" placeholder="0.00" [ngModelOptions]="{updateOn: 'blur'}" [ngModel]="user.multiUserAmount|number:'0.2-2'" (ngModelChange)="onMultiUserAmountChange(user, $event)">
+                    </div>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div class="form-group" *ngIf="equallyTab">
+
+            <label class="col-sm-4"></label>
+            <div class="col-sm-8">
+              <nav class="navbar navbar-inverse">
+                <div class="container-fluid">
+                  <ul class="nav navbar-nav">
+                    <li [ngClass]="{'active': splitTabActive == '1'}"><a (click)="onSplit('1')" title="Split equally" style="cursor: pointer;">=</a></li>
+                    <li [ngClass]="{'active': splitTabActive == '2'}"><a (click)="onSplit('2')" title="Split by exact amounts" style="cursor: pointer;">1.23</a></li>
+                    <li [ngClass]="{'active': splitTabActive == '3'}"><a (click)="onSplit('3')" title="Split by percentage" style="cursor: pointer;">%</a></li>
+                    <li [ngClass]="{'active': splitTabActive == '4'}"><a (click)="onSplit('4')" title="Split by shares" style="cursor: pointer;"><span class="glyphicon glyphicon-tasks"></span></a></li>
+                  </ul>
+                </div>
+              </nav>
+              <div *ngIf="splitTabActive == '1'" class="form-group">
+                <h3>Split equally</h3>
+                <ul class="list-group">
+                  <li *ngFor="let user of groupMembers; let i = index" class="list-group-item">
+                    <div class="row">
+                      <div class="col-sm-9">
+                        <input type="checkbox" name="userChecked-{{i}}" [(ngModel)]="user.isChecked" (change)="onUserCheckedChange()" /> <span class='glyphicon glyphicon-user'></span>
+                        {{user.name}}
+                      </div>
+                      <div class="col-sm-3 text-right">{{(user.amount||0)|currency}}</div>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+              <div *ngIf="splitTabActive == '2'" class="form-group">
+                <h3>Split by exact amounts</h3>
+                <ul class="list-group">
+                  <li *ngFor="let user of groupMembers; let i = index" class="list-group-item">
+                    <div class="row">
+                      <div class="col-sm-8">
+                        <span class='glyphicon glyphicon-user'></span>
+                        {{user.name}}
+                      </div>
+                      <div class="input-group col-sm-4">
+                        <span class="input-group-addon"><i class="glyphicon glyphicon-usd"></i></span>
+                        <input id="exactAmount-{{i}}" type="text" class="form-control" name="exactAmount-{{i}}" placeholder="0.00" [ngModelOptions]="{updateOn: 'blur'}" [ngModel]="user.amount|number:'0.2-2'" (ngModelChange)="onExactAmountChange(user, $event)">
+                      </div>
+                    </div>
+                  </li>
+                </ul>
+                <div class="row">
+                  <div class="col-sm-8">
+                    Total
+                  </div>
+                  <div class="col-sm-4 text-right">
+                    {{(totalAmount||0)|currency}}<br />
+                    <small>{{(remainingAmount||0)|currency}} left</small>
+                  </div>
+                </div>
+              </div>
+              <div *ngIf="splitTabActive == '3'" class="form-group">
+                <h3>Split by percentage</h3>
+                <ul class="list-group">
+                  <li *ngFor="let user of groupMembers; let i = index" class="list-group-item">
+                    <div class="row">
+                      <div class="col-sm-8">
+                        <span class='glyphicon glyphicon-user'></span>
+                        {{user.name}}<br /><small>Total share: {{(user.percentAmount||0)|currency}}</small>
+                      </div>
+                      <div class="input-group col-sm-4">
+                        <input id="percentageAmount-{{i}}" type="text" class="form-control" name="percentageAmount-{{i}}" placeholder="0" [ngModel]="user.percent" (ngModelChange)="onPercentChange(user, $event)">
+                        <span class="input-group-addon">%</span>
+                      </div>
+                    </div>
+                  </li>
+                </ul>
+                <div class="row">
+                  <div class="col-sm-8">
+                    Total
+                  </div>
+                  <div class="col-sm-4 text-right">
+                    {{(totalPercent||0)}}%<br />
+                    <small>{{(remainingPercent||0)}}% left</small>
+                  </div>
+                </div>
+              </div>
+              <div *ngIf="splitTabActive == '4'" class="form-group">
+                <h3>Split by share</h3>
+                <ul class="list-group">
+                  <li *ngFor="let user of groupMembers; let i = index" class="list-group-item">
+                    <div class="row">
+                      <div class="col-sm-8">
+                        <span class='glyphicon glyphicon-user'></span>
+                        {{user.name}}<br /><small>Total share: {{(user.shareAmount||0)|currency}}</small>
+                      </div>
+                      <div class="input-group col-sm-4">
+
+                        <input id="share" type="text" class="form-control" name="share-{{i}}" placeholder="0" [ngModel]="user.share|number" (ngModelChange)="onShareChange(user, $event)">
+                        <span class="input-group-addon">share(s)</span>
+                      </div>
+                    </div>
+                  </li>
+                </ul>
+
+              </div>
+            </div>
+          </div>
+          <div class="form-group row">
+            <label for="date" class="col-sm-4">Date</label>
+            <div class="col-sm-4">
+              <my-date-picker name="date" [options]="myDatePickerOptions" (ngModelChange)="onDatechange($event)"
+                              [ngModel]="myDatePickerModel" required></my-date-picker>
+            </div>
+            <div class="col-sm-4">
+              <button type="button" (click)="onAddImage()" class="btn btn-warning">Add image/notes</button>
+            </div>
+          </div>
+          <div class="form-group row" *ngIf="isAddImage">
+
+            <label class="col-sm-4"></label>
+            <div class="col-sm-8">
+              <h4>Add image/notes</h4><hr />
+              <div class="form-group row">
+                <label for="date" class="col-sm-4">Attach an image:</label>
+                <div class="col-sm-8">
+                  <img *ngIf="isAttachment" name="imgAttachment" [src]="imgAttachment" style="width:200px; height:200px;" />
+                  <input type="file" name="=fileUpload" id="file"
+                         (change)="handleFileInput($event.target.files)">
+                </div>
+              </div>
+              <div class="form-group row">
+                <label for="notes" class="col-sm-4">Notes</label>
+                <div class="col-sm-8">
+                  <textarea rows="4" id="notes" class="form-control" name="notes" [(ngModel)]="notes"></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </form>
+      </div>
+      <div class="modal-footer">
+
+        <button type="button" class="btn btn-outline-dark" (click)="SaveExpense()">Save</button>
+        <button type="button" class="btn btn-outline-dark" (click)="cancel()">Cancel</button>
+      </div>
+
+    </div>
+    <div *ngIf="isDefaultList" class="form-group">
+      <ul class="inline" *ngIf="isNonGroupExpenses">
+        <li *ngFor="let expense of groupExpenses; let i = index" class="list-group-item">
+          <div class="row" style="cursor: pointer;" *ngIf="expense.expenseId!=0">
+
+            <div (click)="addBill(expense.expenseId)">
+              <div class="col-sm-1 text-center" style="background: #eee">
+                <small>{{expense.expenseDate|date:'MMM'}}</small>
+                <h3> {{expense.expenseDate|date:'dd'}}</h3>
+              </div>
+              <div class="col-sm-6">
+                <br />
+                <b> {{expense.description}}</b>
+              </div>
+              <div class="col-sm-2">
+                <small>{{(expense.paidBy!=null && expense.paidBy==currentUserId)?'You':expense.paidBy!=currentUserId?expense.paidByName :expense.paidByCount+' people'}} paid</small><br />
+                <h4>{{expense.amount|currency}}</h4>
+              </div>
+              <div class="col-sm-2">
+                <small>{{expense.settlementAmount>0?isUserDetail?title+' lent you':'you lent':expense.settlementAmount==0?'you borrowed nothing': expense.paidBy!=null?isUserDetail && expense.paidBy==currentUserId?'you lent':expense.paidByName+' lent you':'you borrowed '}}</small><br />
+                <b>
+                  <h4 *ngIf="expense.settlementAmount>0" class="text-success"> {{expense.settlementAmount==0?'':expense.settlementAmount|abs|currency}}</h4>
+
+                  <h4 *ngIf="expense.settlementAmount<0" class="text-danger"> {{expense.settlementAmount==0?'':expense.settlementAmount|abs|currency}}</h4>
+                </b>
+              </div>
+            </div>
+            <div class="col-sm-1" style="margin-top: 10px;" (click)="deleteExpense(expense.expenseId)">
+              <span class="glyphicon glyphicon-trash text-danger"></span>
+            </div>
+          </div>
+          <div class="row" style="cursor: pointer;" *ngIf="expense.paymentId!=0">
+
+            <div (click)="showConfirm(expense.paymentId)">
+              <div class="col-sm-1 text-center">
+                <span class='glyphicon glyphicon-usd' style="font-size: 20px;"></span>
+              </div>
+              <div class="col-sm-6">
+                {{expense.paidByName}} paid to  {{expense.paidToName}} <b>{{expense.amount|currency}}</b>
+              </div>
+              <div class="col-sm-2">
+                <small>you {{expense.toUserId==currentUserId?'received':'paid'}}</small>
+              </div>
+              <div class="col-sm-2">
+                <b>
+                  <h4 *ngIf="expense.toUserId==currentUserId" class="text-danger"> {{expense.amount|currency}}</h4>
+
+                  <h4 *ngIf="expense.toUserId!=currentUserId" class="text-success"> {{expense.amount==0?'':expense.amount|abs|currency}}</h4>
+                </b>
+              </div>
+            </div>
+            <div class="col-sm-1" (click)="deletePayment(expense.paymentId)">
+              <span class="glyphicon glyphicon-trash text-danger"></span>
+            </div>
+          </div>
+        </li>
+      </ul>
+      <div class="row" style="margin: 0; margin-top: 15px;" *ngIf="!isNonGroupExpenses">
+        <div class="col-sm-6" style="border-right:1px solid #ddd">
+          <b>YOU OWE</b>
+          <ul class="list-group">
+            <div *ngFor="let user of members; let i = index">
+              <li class="list-group-item" *ngIf="user.settlementAmount>0">
+                <div class="row" style="cursor: pointer;" (click)="onUserDetail(user.userId)">
+                  <div class="col-sm-2">
+                    <span class='glyphicon glyphicon-user' style="font-size:40px;"></span>
+                  </div>
+                  <div class="col-sm-10 text-left">
+                    {{user.name}}
+                    <br />
+                    <small *ngIf="user.settlementAmount>0" class="text-danger">gets back {{user.settlementAmount|currency}}</small>
+                  </div>
+                </div>
+                <div *ngIf="userDetailTab && user.userId==activeUserDetailId">
+                  <div class="row" *ngFor="let otherUser of memberDetails; let j = index">
+                    <div *ngIf="otherUser.settlementAmount!=0">
+                      <hr />
+                      <div class="col-sm-12">
+                        <small *ngIf="otherUser.settlementAmount>0">You owes {{user.name}}  <small class="text-success"> {{otherUser.settlementAmount|currency}}</small> for '{{otherUser.name}}'</small>
+                        <small *ngIf="otherUser.settlementAmount<0"> {{user.name}} owes you <small class="text-danger">{{otherUser.settlementAmount|abs|currency}}</small> for '{{otherUser.name}}'</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </li>
+            </div>
+          </ul>
+        </div>
+        <div class="col-sm-6 text-right" style="border-left:1px solid #ddd">
+          <b>YOU ARE OWED</b>
+          <ul class="list-group">
+            <div *ngFor="let user of members; let i = index">
+              <li class="list-group-item" *ngIf="user.settlementAmount<0">
+                <div class="row" style="cursor: pointer;" (click)="onUserDetail1(user.userId)">
+                  <div class="col-sm-2">
+                    <span class='glyphicon glyphicon-user' style="font-size:40px;"></span>
+                  </div>
+                  <div class="col-sm-10 text-left">
+                    <b>{{user.name}}</b>
+                    <br />
+                    <small *ngIf="user.settlementAmount<0" class="text-success">owes you {{user.settlementAmount|abs|currency}}</small>
+                  </div>
+                </div>
+                <div *ngIf="userDetailTab1 && user.userId==activeUserDetailId1">
+                  <div class="row" *ngFor="let otherUser of memberDetails; let j = index">
+                    <div *ngIf="otherUser.settlementAmount!=0">
+                      <div class="col-sm-12 text-left">
+                        <a [href]="otherUser.name=='Non-group expenses'?'/home/0':'/group/'+otherUser.userId">  <small *ngIf="otherUser.settlementAmount>0">You owes {{user.name}}  <small class="text-success"> {{otherUser.settlementAmount|currency}}</small> for '{{otherUser.name}}'</small></a>
+                        <a [href]="otherUser.name=='Non-group expenses'?'/home/0':'/group/'+otherUser.userId">   <small *ngIf="otherUser.settlementAmount<0"> {{user.name}} owes you <small class="text-danger">{{otherUser.settlementAmount|abs|currency}}</small> for '{{otherUser.name}}'</small></a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </li>
+            </div>
+          </ul>
+        </div>
+      </div>
+      <div class="row" style="margin: 0; margin-top: 15px;">
+        <div class="col-sm-6" style="border-right:1px solid #ddd"></div>
+        <div class="col-sm-6"></div>
+      </div>
+    </div>
+
+  </div>
+  <div class="col-sm-4">
+    <div class="row" *ngIf="isUserDetail">
+      <div class="col-sm-12">
+        YOUR BALANCE<br /><br />
+        <div [ngClass]="{ 'text-success':totalBalance<0,'text-danger':totalBalance>0}">
+          {{title}} owes you<br />
+          <h2>{{totalBalance||0|abs|currency}}</h2>
+        </div>
+        DETAILS
+        <div class="row" *ngFor="let otherUser of memberDetails; let j = index">
+          <div *ngIf="otherUser.settlementAmount!=0">
+            <div class="col-sm-12 text-left">
+              <a [href]="otherUser.name=='Non-group expenses'?'/home/0':'/group/'+otherUser.userId">  <small *ngIf="otherUser.settlementAmount>0">You owes {{title}}  <small class="text-success"> {{otherUser.settlementAmount|currency}}</small> for '{{otherUser.name}}'</small></a>
+              <a [href]="otherUser.name=='Non-group expenses'?'/home/0':'/group/'+otherUser.userId">   <small *ngIf="otherUser.settlementAmount<0"> {{title}} owes you <small class="text-danger">{{otherUser.settlementAmount||0|abs|currency}}</small> for '{{otherUser.name}}'</small></a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,37 @@
+<div>
+  <br />
+  <h3>Add New Group</h3>
+  <form (ngSubmit)="onSearch()" [formGroup]="searchform" #formDir="ngForm" novalidate>
+    <div class="form-group col-lg-4">
+      <label>Group Name</label>
+      <input type="text" name="" class="form-control" id="name" value="" formControlName="name">
+      <span class="text-danger" *ngIf="name.invalid && formDir.submitted">
+        Group Name is required.
+      </span>
+    </div>
+    <!--<div class="form-group col-lg-12">
+      <button type="submit" class="btn btn-primary">Add</button>
+    </div>-->
+    <!--</form>
+    <form [formGroup]="myForm">-->
+    <table class="table table-response table-bordered">
+      <thead>
+      <th style="width:4%"></th>
+      <th>Name</th>
+      <th>Email</th>
+      <!--<th>Action</th>-->
+      </thead>
+
+      <tr *ngFor="let user of users">
+        <td><input type="checkbox" id="cbSelect" (click)="onCheckChange(user.userId,$event.target.checked)" [disabled]="this.storage.get('userId')==user.userId? true: false" [checked]="this.storage.get('userId')==user.userId? true: false"/></td>
+        <td>{{user.name }}<label *ngIf="this.storage.get('userId')==user.userId">&nbsp;(me)</label></td>
+        <td>{{user.email}}</td>
+      </tr>
+
+    </table>
+
+    <div class="form-group col-lg-12">
+      <button type="submit" class="btn btn-primary">Add/Remove Members</button>
+    </div>
+  </form>
+</div>
